@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: yt-pubsubhubbub
+  datasource:
+    url: jdbc:sqlite:${user.dir}/data/app.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: true
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080
+  max-http-request-header-size: 64KB
+  forward-headers-strategy: native
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  callback:
+    base-url: ${CALLBACK_BASE_URL:http://localhost:8080}
+  hub:
+    url: https://pubsubhubbub.appspot.com/subscribe
+    default-lease-seconds: 864000

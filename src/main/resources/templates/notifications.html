@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>Notifications · YouTube PubSubHubbub Subscriber</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" />
+</head>
+<body>
+<header class="app-header">
+  <h1>YouTube PubSubHubbub Subscriber</h1>
+  <nav>
+    <a th:href="@{/}" class="nav-link">Channels</a>
+    <a th:href="@{/notifications}" class="nav-link active">Notifications</a>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="card">
+    <h2>Filter</h2>
+    <form th:action="@{/notifications}" method="get" class="filter-bar">
+      <label for="channelId">Channel</label>
+      <select id="channelId" name="channelId">
+        <option value="" th:selected="${filterChannelId == ''}">All channels</option>
+        <option th:each="c : ${channels}"
+                th:value="${c}"
+                th:text="${c}"
+                th:selected="${c == filterChannelId}">UCxxx</option>
+      </select>
+      <button type="submit">Apply</button>
+      <a th:if="${filterChannelId != ''}" th:href="@{/notifications}" class="nav-link">clear</a>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>
+      Notifications
+      <span class="muted" th:text="'(' + ${notifications.totalElements} + ' total)'">(0 total)</span>
+    </h2>
+    <table class="data-table" th:if="${notifications.totalElements > 0}">
+      <thead>
+      <tr>
+        <th>Received</th>
+        <th>Channel</th>
+        <th>Title</th>
+        <th>Published</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="n : ${notifications.content}">
+        <td th:text="${#temporals.format(n.receivedAt, 'yyyy-MM-dd HH:mm')}">2026-05-13 12:00</td>
+        <td>
+          <a th:href="'https://www.youtube.com/channel/' + ${n.channelId}" target="_blank" rel="noopener"
+             th:text="${n.channelId}">UCxxx</a>
+        </td>
+        <td>
+          <a th:if="${n.link}" th:href="${n.link}" target="_blank" rel="noopener" th:text="${n.title} ?: '(no title)'">title</a>
+          <span th:unless="${n.link}" th:text="${n.title} ?: '(no title)'">title</span>
+        </td>
+        <td>
+          <span th:if="${n.publishedAt}"
+                th:text="${#temporals.format(n.publishedAt, 'yyyy-MM-dd HH:mm')}">2026-05-13 12:00</span>
+          <span th:unless="${n.publishedAt}" class="muted">-</span>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+    <p class="empty" th:if="${notifications.totalElements == 0}">
+      No notifications yet. They'll show up here once the hub starts delivering.
+    </p>
+
+    <nav class="pagination" th:if="${notifications.totalPages > 1}">
+      <a th:if="${!notifications.first}"
+         th:href="@{/notifications(channelId=${filterChannelId}, page=${notifications.number - 1}, size=${notifications.size})}">&larr; previous</a>
+      <span>page <strong th:text="${notifications.number + 1}">1</strong> / <span th:text="${notifications.totalPages}">1</span></span>
+      <a th:if="${!notifications.last}"
+         th:href="@{/notifications(channelId=${filterChannelId}, page=${notifications.number + 1}, size=${notifications.size})}">next &rarr;</a>
+    </nav>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,116 @@
+package jp.fout.ytpubsubhubbub.domain.subscription
+
+import jp.fout.ytpubsubhubbub.config.AppProperties
+import jp.fout.ytpubsubhubbub.infrastructure.hub.HubException
+import jp.fout.ytpubsubhubbub.infrastructure.hub.PubSubHubbubClient
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.security.SecureRandom
+import java.time.LocalDateTime
+import java.util.HexFormat
+import java.util.UUID
+
+@Service
+@Transactional
+class SubscriptionService(
+    private val repository: SubscriptionRepository,
+    private val appProperties: AppProperties,
+    private val hubClient: PubSubHubbubClient,
+) {
+    private val log = LoggerFactory.getLogger(javaClass)
+    private val random = SecureRandom()
+
+    fun register(channelId: String): Subscription {
+        val existing = repository.findByChannelId(channelId)
+        val sub = existing ?: Subscription(
+            channelId = channelId,
+            topicUrl = topicUrlFor(channelId),
+            callbackToken = UUID.randomUUID().toString(),
+            hubSecret = randomSecret(),
+            status = SubscriptionStatus.PENDING,
+        )
+        sub.status = SubscriptionStatus.PENDING
+        sub.updatedAt = LocalDateTime.now()
+        val saved = repository.save(sub)
+
+        try {
+            hubClient.subscribe(
+                topicUrl = saved.topicUrl,
+                callbackUrl = callbackUrlFor(saved.callbackToken),
+                hubSecret = saved.hubSecret,
+                leaseSeconds = appProperties.hub.defaultLeaseSeconds,
+            )
+        } catch (e: HubException) {
+            log.warn("subscribe failed for channel {}: {}", channelId, e.message)
+            markFailed(saved, e.message ?: "unknown")
+        }
+        return saved
+    }
+
+    @Transactional(readOnly = true)
+    fun list(): List<Subscription> = repository.findAll()
+
+    @Transactional(readOnly = true)
+    fun findByCallbackToken(token: String): Subscription? =
+        repository.findByCallbackToken(token)
+
+    fun delete(id: Long) {
+        val sub = repository.findById(id).orElse(null) ?: return
+        try {
+            hubClient.unsubscribe(
+                topicUrl = sub.topicUrl,
+                callbackUrl = callbackUrlFor(sub.callbackToken),
+                hubSecret = sub.hubSecret,
+            )
+        } catch (e: HubException) {
+            log.warn("unsubscribe failed for channel {}: {}", sub.channelId, e.message)
+        }
+        repository.delete(sub)
+    }
+
+    fun markActive(sub: Subscription, leaseSeconds: Long) {
+        sub.status = SubscriptionStatus.ACTIVE
+        sub.leaseSeconds = leaseSeconds
+        sub.subscribedAt = LocalDateTime.now()
+        sub.expiresAt = LocalDateTime.now().plusSeconds(leaseSeconds)
+        sub.updatedAt = LocalDateTime.now()
+        sub.lastError = null
+        repository.save(sub)
+    }
+
+    fun markFailed(sub: Subscription, reason: String) {
+        sub.status = SubscriptionStatus.FAILED
+        sub.lastError = reason.take(1024)
+        sub.updatedAt = LocalDateTime.now()
+        repository.save(sub)
+    }
+
+    fun renew(sub: Subscription) {
+        try {
+            hubClient.subscribe(
+                topicUrl = sub.topicUrl,
+                callbackUrl = callbackUrlFor(sub.callbackToken),
+                hubSecret = sub.hubSecret,
+                leaseSeconds = appProperties.hub.defaultLeaseSeconds,
+            )
+            sub.status = SubscriptionStatus.PENDING
+            sub.updatedAt = LocalDateTime.now()
+            repository.save(sub)
+        } catch (e: HubException) {
+            log.warn("renew failed for channel {}: {}", sub.channelId, e.message)
+            markFailed(sub, e.message ?: "unknown")
+        }
+    }
+
+    fun callbackUrlFor(token: String): String =
+        "${appProperties.callback.baseUrl.trimEnd('/')}/callback/$token"
+
+    private fun topicUrlFor(channelId: String): String =
+        "https://www.youtube.com/xml/feeds/videos.xml?channel_id=$channelId"
+
+    private fun randomSecret(): String {
+        val bytes = ByteArray(32).also { random.nextBytes(it) }
+        return HexFormat.of().formatHex(bytes)
+    }
+}

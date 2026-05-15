@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>YouTube PubSubHubbub Subscriber</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" />
+</head>
+<body>
+<header class="app-header">
+  <h1>YouTube PubSubHubbub Subscriber</h1>
+  <nav>
+    <a th:href="@{/}" class="nav-link active">Channels</a>
+    <a th:href="@{/notifications}" class="nav-link">Notifications</a>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="card">
+    <h2>Add channel</h2>
+    <form th:action="@{/channels}" th:object="${form}" method="post" class="form-row">
+      <label for="channelId">YouTube Channel ID</label>
+      <input id="channelId" type="text" th:field="*{channelId}" placeholder="UCxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" required />
+      <button type="submit">Subscribe</button>
+    </form>
+    <p class="hint" th:if="${#fields.hasErrors('form.channelId')}" th:errors="*{channelId}">channelId must be valid</p>
+    <p class="hint" th:unless="${#fields.hasErrors('form.channelId')}">
+      Format: <code>UC</code> + 22 alphanumeric/<code>-</code>/<code>_</code>
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>Subscribed channels</h2>
+    <table class="data-table" th:if="${!#lists.isEmpty(subscriptions)}">
+      <thead>
+      <tr>
+        <th>Channel ID</th>
+        <th>Status</th>
+        <th>Expires</th>
+        <th>Notifications</th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="sub : ${subscriptions}">
+        <td>
+          <a th:href="'https://www.youtube.com/channel/' + ${sub.channelId}" target="_blank" rel="noopener"
+             th:text="${sub.channelId}">UCxxx</a>
+        </td>
+        <td>
+          <span class="status-pill" th:classappend="'status-' + ${#strings.toLowerCase(sub.status)}"
+                th:text="${sub.status}">PENDING</span>
+        </td>
+        <td>
+          <span th:if="${sub.expiresAt}"
+                th:text="${#temporals.format(sub.expiresAt, 'yyyy-MM-dd HH:mm')}">-</span>
+          <span th:unless="${sub.expiresAt}" class="muted">-</span>
+        </td>
+        <td th:text="${notificationCounts.get(sub.channelId)}">0</td>
+        <td>
+          <form th:action="@{'/channels/' + ${sub.id} + '/unsubscribe'}" method="post" class="inline">
+            <button type="submit" class="danger">Unsubscribe</button>
+          </form>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+    <p class="empty" th:if="${#lists.isEmpty(subscriptions)}">No channels yet. Add one above.</p>
+  </section>
+</main>
+</body>
+</html>
