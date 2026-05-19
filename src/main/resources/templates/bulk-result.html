@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bulk registration result | YouTube PubSubHubbub Subscriber</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" />
+</head>
+<body>
+<header class="app-header">
+  <h1>YouTube PubSubHubbub Subscriber</h1>
+  <nav>
+    <a th:href="@{/}" class="nav-link active">Channels</a>
+    <a th:href="@{/notifications}" class="nav-link">Notifications</a>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="card">
+    <h2>Bulk registration result</h2>
+    <div class="result-summary">
+      <div class="result-chip result-registered">
+        <span class="label">Registered</span>
+        <span class="count" th:text="${result.registered.size()}">0</span>
+      </div>
+      <div class="result-chip result-skipped">
+        <span class="label">Skipped</span>
+        <span class="count" th:text="${result.skipped.size()}">0</span>
+      </div>
+      <div class="result-chip result-invalid">
+        <span class="label">Invalid</span>
+        <span class="count" th:text="${result.invalid.size()}">0</span>
+      </div>
+      <div class="result-chip result-failed">
+        <span class="label">Failed</span>
+        <span class="count" th:text="${result.failed.size()}">0</span>
+      </div>
+    </div>
+
+    <div class="result-block" th:if="${!#lists.isEmpty(result.registered)}">
+      <h3>Registered</h3>
+      <ul class="id-list">
+        <li th:each="id : ${result.registered}" th:text="${id}">UCxxx</li>
+      </ul>
+    </div>
+
+    <div class="result-block" th:if="${!#lists.isEmpty(result.skipped)}">
+      <h3>Skipped (already subscribed)</h3>
+      <ul class="id-list">
+        <li th:each="id : ${result.skipped}" th:text="${id}">UCxxx</li>
+      </ul>
+    </div>
+
+    <div class="result-block" th:if="${!#lists.isEmpty(result.invalid)}">
+      <h3>Invalid input</h3>
+      <ul class="id-list">
+        <li th:each="row : ${result.invalid}">
+          <code th:text="${row.input}">bad-id</code>
+          <span class="muted" th:text="' — ' + ${row.reason}"></span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="result-block" th:if="${!#lists.isEmpty(result.failed)}">
+      <h3>Hub failures</h3>
+      <ul class="id-list">
+        <li th:each="row : ${result.failed}">
+          <code th:text="${row.input}">UCxxx</code>
+          <span class="muted" th:text="' — ' + ${row.reason}"></span>
+        </li>
+      </ul>
+    </div>
+
+    <p class="result-back">
+      <a th:href="@{/}" class="nav-link">&larr; Back to channels</a>
+    </p>
+  </section>
+</main>
+</body>
+</html>

@@ -29,6 +29,29 @@
   </section>
 
   <section class="card">
+    <h2>Bulk add channels</h2>
+    <form th:action="@{/channels/bulk}" method="post" enctype="multipart/form-data" class="form-stack">
+      <div class="form-field">
+        <label for="channelIdsText">Channel IDs (one per line, or comma-separated)</label>
+        <textarea id="channelIdsText" name="channelIdsText" rows="6"
+                  placeholder="UCxxxxxxxxxxxxxxxxxxxxxx&#10;UCyyyyyyyyyyyyyyyyyyyyyy"></textarea>
+      </div>
+
+      <div class="form-field">
+        <label for="csvFile">…or upload a CSV file (single <code>channel_id</code> column)</label>
+        <input id="csvFile" name="csvFile" type="file" accept=".csv,text/csv,text/plain" />
+      </div>
+
+      <div class="form-actions">
+        <button type="submit">Subscribe all</button>
+      </div>
+    </form>
+    <p class="hint">
+      Duplicates of already-subscribed channels are skipped. Invalid IDs and Hub failures are reported on the result page.
+    </p>
+  </section>
+
+  <section class="card">
     <h2>Subscribed channels</h2>
     <table class="data-table" th:if="${!#lists.isEmpty(subscriptions)}">
       <thead>

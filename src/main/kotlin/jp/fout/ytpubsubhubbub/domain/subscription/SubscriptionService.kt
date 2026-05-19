@@ -21,6 +21,43 @@ class SubscriptionService(
     private val log = LoggerFactory.getLogger(javaClass)
     private val random = SecureRandom()
 
+    fun registerBulk(rawInputs: List<String>): BulkRegistrationResult {
+        val registered = mutableListOf<String>()
+        val skipped = mutableListOf<String>()
+        val invalid = mutableListOf<BulkRegistrationFailure>()
+        val failed = mutableListOf<BulkRegistrationFailure>()
+        val seen = mutableSetOf<String>()
+
+        for (raw in rawInputs) {
+            val trimmed = raw.trim()
+            if (trimmed.isEmpty()) continue
+            if (!seen.add(trimmed)) continue
+
+            if (!CHANNEL_ID_REGEX.matches(trimmed)) {
+                invalid.add(BulkRegistrationFailure(trimmed, "invalid channel id format"))
+                continue
+            }
+            if (repository.findByChannelId(trimmed) != null) {
+                skipped.add(trimmed)
+                continue
+            }
+
+            val saved = register(trimmed)
+            if (saved.status == SubscriptionStatus.FAILED) {
+                failed.add(BulkRegistrationFailure(trimmed, saved.lastError ?: "unknown error"))
+            } else {
+                registered.add(trimmed)
+            }
+        }
+
+        return BulkRegistrationResult(
+            registered = registered.toList(),
+            skipped = skipped.toList(),
+            invalid = invalid.toList(),
+            failed = failed.toList(),
+        )
+    }
+
     fun register(channelId: String): Subscription {
         val existing = repository.findByChannelId(channelId)
         val sub = existing ?: Subscription(
@@ -113,4 +150,23 @@ class SubscriptionService(
         val bytes = ByteArray(32).also { random.nextBytes(it) }
         return HexFormat.of().formatHex(bytes)
     }
+
+    companion object {
+        val CHANNEL_ID_REGEX = Regex("^UC[A-Za-z0-9_-]{22}$")
+    }
+}
+
+data class BulkRegistrationFailure(
+    val input: String,
+    val reason: String,
+)
+
+data class BulkRegistrationResult(
+    val registered: List<String>,
+    val skipped: List<String>,
+    val invalid: List<BulkRegistrationFailure>,
+    val failed: List<BulkRegistrationFailure>,
+) {
+    val totalProcessed: Int
+        get() = registered.size + skipped.size + invalid.size + failed.size
 }
