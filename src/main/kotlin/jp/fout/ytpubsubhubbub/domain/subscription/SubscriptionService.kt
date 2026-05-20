@@ -4,7 +4,9 @@ import jp.fout.ytpubsubhubbub.config.AppProperties
 import jp.fout.ytpubsubhubbub.infrastructure.hub.HubException
 import jp.fout.ytpubsubhubbub.infrastructure.hub.PubSubHubbubClient
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.security.SecureRandom
 import java.time.LocalDateTime
@@ -17,10 +19,12 @@ class SubscriptionService(
     private val repository: SubscriptionRepository,
     private val appProperties: AppProperties,
     private val hubClient: PubSubHubbubClient,
+    @Lazy private val self: SubscriptionService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val random = SecureRandom()
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun registerBulk(rawInputs: List<String>): BulkRegistrationResult {
         val registered = mutableListOf<String>()
         val skipped = mutableListOf<String>()
@@ -58,7 +62,30 @@ class SubscriptionService(
         )
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun register(channelId: String): Subscription {
+        // Commit the row in its own transaction first so the Hub's verification
+        // GET against /callback/{token} can find the subscription. Otherwise the
+        // outer transaction (especially in bulk) holds the INSERT uncommitted
+        // until the loop finishes, and every verification is rejected as
+        // "unknown token".
+        val saved = self.persistPending(channelId)
+        return try {
+            hubClient.subscribe(
+                topicUrl = saved.topicUrl,
+                callbackUrl = callbackUrlFor(saved.callbackToken),
+                hubSecret = saved.hubSecret,
+                leaseSeconds = appProperties.hub.defaultLeaseSeconds,
+            )
+            saved
+        } catch (e: HubException) {
+            log.warn("subscribe failed for channel {}: {}", channelId, e.message)
+            self.markFailedInNewTx(saved.id!!, e.message ?: "unknown")
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun persistPending(channelId: String): Subscription {
         val existing = repository.findByChannelId(channelId)
         val sub = existing ?: Subscription(
             channelId = channelId,
@@ -69,20 +96,17 @@ class SubscriptionService(
         )
         sub.status = SubscriptionStatus.PENDING
         sub.updatedAt = LocalDateTime.now()
-        val saved = repository.save(sub)
+        return repository.save(sub)
+    }
 
-        try {
-            hubClient.subscribe(
-                topicUrl = saved.topicUrl,
-                callbackUrl = callbackUrlFor(saved.callbackToken),
-                hubSecret = saved.hubSecret,
-                leaseSeconds = appProperties.hub.defaultLeaseSeconds,
-            )
-        } catch (e: HubException) {
-            log.warn("subscribe failed for channel {}: {}", channelId, e.message)
-            markFailed(saved, e.message ?: "unknown")
-        }
-        return saved
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun markFailedInNewTx(id: Long, reason: String): Subscription {
+        val sub = repository.findById(id)
+            .orElseThrow { IllegalStateException("subscription $id not found") }
+        sub.status = SubscriptionStatus.FAILED
+        sub.lastError = reason.take(1024)
+        sub.updatedAt = LocalDateTime.now()
+        return repository.save(sub)
     }
 
     @Transactional(readOnly = true)
