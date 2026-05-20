@@ -5,6 +5,7 @@ import jp.fout.ytpubsubhubbub.infrastructure.hub.HubException
 import jp.fout.ytpubsubhubbub.infrastructure.hub.PubSubHubbubClient
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Lazy
+import org.springframework.dao.CannotAcquireLockException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -46,12 +47,20 @@ class SubscriptionService(
                 continue
             }
 
-            val saved = register(trimmed)
+            val saved = try {
+                registerWithLockRetry(trimmed)
+            } catch (e: Exception) {
+                log.warn("register failed for channel {}: {}", trimmed, e.message)
+                failed.add(BulkRegistrationFailure(trimmed, e.message ?: "unknown error"))
+                Thread.sleep(BULK_PACING_MS)
+                continue
+            }
             if (saved.status == SubscriptionStatus.FAILED) {
                 failed.add(BulkRegistrationFailure(trimmed, saved.lastError ?: "unknown error"))
             } else {
                 registered.add(trimmed)
             }
+            Thread.sleep(BULK_PACING_MS)
         }
 
         return BulkRegistrationResult(
@@ -60,6 +69,24 @@ class SubscriptionService(
             invalid = invalid.toList(),
             failed = failed.toList(),
         )
+    }
+
+    private fun registerWithLockRetry(channelId: String): Subscription {
+        var lastError: Exception? = null
+        repeat(BULK_RETRY_ATTEMPTS) { attempt ->
+            try {
+                return register(channelId)
+            } catch (e: CannotAcquireLockException) {
+                lastError = e
+                val backoff = BULK_RETRY_BACKOFF_MS * (attempt + 1L)
+                log.warn(
+                    "lock contention on attempt {}/{} for {}, sleeping {}ms",
+                    attempt + 1, BULK_RETRY_ATTEMPTS, channelId, backoff,
+                )
+                Thread.sleep(backoff)
+            }
+        }
+        throw lastError ?: IllegalStateException("registerWithLockRetry exhausted without error")
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -177,6 +204,9 @@ class SubscriptionService(
 
     companion object {
         val CHANNEL_ID_REGEX = Regex("^UC[A-Za-z0-9_-]{22}$")
+        private const val BULK_PACING_MS = 20L
+        private const val BULK_RETRY_ATTEMPTS = 3
+        private const val BULK_RETRY_BACKOFF_MS = 100L
     }
 }
 
