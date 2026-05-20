@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern
 import jp.fout.ytpubsubhubbub.domain.notification.NotificationRepository
 import jp.fout.ytpubsubhubbub.domain.subscription.BulkRegistrationResult
 import jp.fout.ytpubsubhubbub.domain.subscription.SubscriptionService
+import jp.fout.ytpubsubhubbub.domain.subscription.SubscriptionStatus
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.validation.BindingResult
@@ -28,8 +29,12 @@ class ChannelViewController(
     fun index(model: Model): String {
         val subs = subscriptionService.list().sortedByDescending { it.createdAt }
         val counts = subs.associate { it.channelId to notificationRepository.countByChannelId(it.channelId) }
+        val statusCounts = SubscriptionStatus.entries
+            .associateWith { status -> subs.count { it.status == status } }
         model.addAttribute("subscriptions", subs)
         model.addAttribute("notificationCounts", counts)
+        model.addAttribute("statusCounts", statusCounts)
+        model.addAttribute("totalCount", subs.size)
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", ChannelForm())
         }

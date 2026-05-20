@@ -53,6 +53,18 @@
 
   <section class="card">
     <h2>Subscribed channels</h2>
+    <div class="status-summary" th:if="${!#lists.isEmpty(subscriptions)}">
+      <div class="status-count-chip">
+        <span class="label">Total</span>
+        <span class="count" th:text="${totalCount}">0</span>
+      </div>
+      <div th:each="entry : ${statusCounts}"
+           class="status-count-chip"
+           th:classappend="'status-' + ${#strings.toLowerCase(entry.key)}">
+        <span class="label" th:text="${entry.key}">PENDING</span>
+        <span class="count" th:text="${entry.value}">0</span>
+      </div>
+    </div>
     <table class="data-table" th:if="${!#lists.isEmpty(subscriptions)}">
       <thead>
       <tr>
