@@ -261,3 +261,192 @@ form.inline {
 .pagination a:hover {
   color: var(--color-text);
 }
+
+.form-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.form-field {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.form-field label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-text-dim);
+}
+
+.form-field label code {
+  background: var(--color-surface-2);
+  padding: 0 var(--space-2);
+  border-radius: 4px;
+}
+
+.form-field textarea {
+  display: block;
+  width: 100%;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  padding: var(--space-3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 7rem;
+}
+
+.form-field textarea:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+  border-color: var(--color-accent);
+}
+
+.form-field input[type="file"] {
+  display: block;
+  width: 100%;
+  color: var(--color-text-dim);
+  font-size: 0.875rem;
+  padding: var(--space-2) 0;
+}
+
+.form-field input[type="file"]::file-selector-button {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4);
+  margin-right: var(--space-3);
+  font-family: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.form-field input[type="file"]::file-selector-button:hover {
+  border-color: var(--color-accent);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.result-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.result-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-2);
+  min-width: 6rem;
+}
+
+.result-chip .label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.result-chip .count {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.result-chip.result-registered { border-color: rgba(63, 185, 80, 0.4); }
+.result-chip.result-registered .count { color: var(--color-active); }
+.result-chip.result-skipped .count { color: var(--color-muted); }
+.result-chip.result-invalid { border-color: rgba(210, 153, 34, 0.4); }
+.result-chip.result-invalid .count { color: var(--color-pending); }
+.result-chip.result-failed { border-color: rgba(248, 81, 73, 0.4); }
+.result-chip.result-failed .count { color: var(--color-failed); }
+
+.result-block {
+  margin-top: var(--space-6);
+}
+
+.result-block h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  margin: 0 0 var(--space-3);
+}
+
+.id-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+}
+
+.id-list code {
+  background: var(--color-surface-2);
+  padding: 0 var(--space-2);
+  border-radius: 4px;
+}
+
+.result-back {
+  margin-top: var(--space-8);
+}
+
+.status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.status-count-chip {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+}
+
+.status-count-chip .label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.status-count-chip .count {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.status-count-chip.status-active { border-color: rgba(63, 185, 80, 0.4); }
+.status-count-chip.status-active .count { color: var(--color-active); }
+.status-count-chip.status-pending { border-color: rgba(210, 153, 34, 0.4); }
+.status-count-chip.status-pending .count { color: var(--color-pending); }
+.status-count-chip.status-failed,
+.status-count-chip.status-expired { border-color: rgba(248, 81, 73, 0.4); }
+.status-count-chip.status-failed .count,
+.status-count-chip.status-expired .count { color: var(--color-failed); }
+.status-count-chip.status-unsubscribed .count { color: var(--color-muted); }

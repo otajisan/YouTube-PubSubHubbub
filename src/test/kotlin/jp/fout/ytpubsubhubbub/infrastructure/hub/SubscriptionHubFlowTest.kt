@@ -10,13 +10,13 @@ import jp.fout.ytpubsubhubbub.domain.subscription.SubscriptionRepository
 import jp.fout.ytpubsubhubbub.domain.subscription.SubscriptionService
 import jp.fout.ytpubsubhubbub.domain.subscription.SubscriptionStatus
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
-import org.springframework.transaction.annotation.Transactional
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import kotlin.test.assertEquals
@@ -25,11 +25,15 @@ import kotlin.test.assertTrue
 
 @SpringBootTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Transactional
 class SubscriptionHubFlowTest @Autowired constructor(
     private val service: SubscriptionService,
     private val repository: SubscriptionRepository,
 ) {
+    @BeforeEach
+    fun cleanDb() {
+        repository.deleteAll()
+    }
+
     @Test
     fun `register saves PENDING and posts subscribe form to hub`() {
         wireMock.resetAll()
